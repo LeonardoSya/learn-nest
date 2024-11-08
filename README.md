@@ -1,99 +1,179 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# nestjs
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+- cli创建控制器
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://coveralls.io/github/nestjs/nest?branch=master" target="_blank"><img src="https://coveralls.io/repos/github/nestjs/nest/badge.svg?branch=master#9" alt="Coverage" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+nest g controller [name]
 
-## Description
+- logger
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+nestjs内置日志记录器，用于打印日志信息
 
-## Project setup
-
-```bash
-$ yarn install
+```tsx
+private readonly logger = new Logger(ThisClass.name). // 获取当前类名作为日志标识符
 ```
 
-## Compile and run the project
+- 依赖注入（Dependency Injection）
 
-```bash
-# development
-$ yarn run start
+nestjs的依赖注入系统会自动实例化并注入这个实例
 
-# watch mode
-$ yarn run start:dev
-
-# production mode
-$ yarn run start:prod
+```tsx
+constructor(private configService: ConfigService) {}. // ConfigService用于读取config的服务，如PORT等
 ```
 
-## Run tests
+- NestJS 如何通过 TypeScript 的类型系统来实现依赖注入
 
-```bash
-# unit tests
-$ yarn run test
+ts的emitDecoratorMetadata（元数据反射），当编译 TypeScript 代码时，会自动生成包含类型信息的元数据
 
-# e2e tests
-$ yarn run test:e2e
+```tsx
+// 这是简化版的底层实现原理
+class Container {
+  private providers = new Map();
 
-# test coverage
-$ yarn run test:cov
+  // 注册provider
+  register(token: any, provider: any) {
+    this.providers.set(token, provider);
+  }
+
+  // 解析依赖
+  resolve(target: any) {
+    // 获取构造函数的参数类型（通过TypeScript的元数据）
+    const paramTypes = Reflect.getMetadata('design:paramtypes', target);
+    
+    // 解析每个依赖
+    const dependencies = paramTypes.map((type: any) => {
+      return this.providers.get(type);
+    });
+
+    // 创建实例并注入依赖
+    return new target(...dependencies);
+  }
+}
 ```
 
-## Deployment
+- 当应用启动时，NestJS 创建一个 IoC 容器
+- 扫描所有带有 @Injectable() 装饰器的类
+- 通过 TypeScript 的类型元数据识别依赖关系
+- 按需创建和注入实例
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+- @Module
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+将一个类标记为nestjs模块
 
-```bash
-$ yarn install -g mau
-$ mau deploy
+module默认是单例，因此可以在多个模块之间共享任何提供程序的同一实例
+
+```tsx
+@Module ({
+		// ... 我想在多个模块间共享CatService的实例
+		providers: [CatService],
+		exports: [CatService],
+})
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+- @Global
 
-## Resources
+模块全局化 （如数据库连接）通常在根模块、 核心模块注册
 
-Check out a few resources that may come in handy when working with NestJS:
+```tsx
+@Global()
+@Module({
+  controllers: [CatsController],
+  providers: [CatsService],
+  exports: [CatsService],
+})
+```
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+- @Controller
 
-## Support
+作为api端点暴露，如果没有controller，外部应用无法通过http请求触发下载功能，controller定义method和api路由
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+- implements 实现
 
-## Stay in touch
+用于类实现接口，必须实现接口中的所有方法，一个类可以实现多个接口，只实现方法签名，不包含具体实现
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+```tsx
+interface Walkable {
+    walk(): void;
+}
 
-## License
+class Animal {
+    name: string;
+    constructor(name: string) {
+        this.name = name;
+    }
+}
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+// 既继承类又实现接口
+class Cat extends Animal implements Walkable {
+    walk() {
+        console.log(`${this.name} 在走路`);
+    }
+}
+```
+
+- Entity
+
+定义数据库表结构的类
+
+- 单例模式（nestjs forRoot()）
+
+确保一个类只有一个实例，提供一个全局访问点，所有地方共享同一个实例
+
+什么时候需要单例模式？
+
+1. 数据库连接 TypeOrmModule
+2. 配置 ConfigModule
+3. 缓存
+4. 定时任务调度器
+5. 全局状态管理
+
+如数据库连接场景：
+
+```tsx
+@Module({
+	imports: [
+		TypeOrmModule.forRoot({  // 不用forRoot()的话，每个模块都可能创建新的数据库连接
+			type: 'pg',
+			host: 'xxx',
+			// ...
+		})
+	]
+})
+class AppModule {}
+```
+
+- config和定时任务配置
+
+```tsx
+const { config } = require(`./config/config.${process.env.APP_ENV}`);
+
+// ...
+ConfigModule.forRoot({
+  isGlobal: true,
+  envFilePath: `${process.cwd()}/.env.${process.env.APP_ENV}`,
+  load: [commonConfig, config],
+}),
+ScheduleModule.forRoot(),
+```
+
+- cron 定时任务
+
+```tsx
+@Injectable()
+export class GroupCreateCron extends RouteService {
+  _isRunning = false;
+
+  @Cron(CronExpression.EVERY_HOUR)
+  async handleCron() {
+    if(this._isRunning) return 
+    try {
+      this._isRunning = true;
+
+      // 定时任务逻辑
+    } catch (error) {
+      
+    } finally {
+      this._isRunning = false;
+    }
+  }
+}
+```
